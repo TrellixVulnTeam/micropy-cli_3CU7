@@ -36,7 +36,7 @@ classifiers = [
 micropy = 'micropy.cli:cli'
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.11"
+python = ">=3.8,<3.11"
 boltons = "^19.3"
 cachier = "^1.2"
 Jinja2 = "=3.0.3"
@@ -59,6 +59,9 @@ rshell = [
 ]
 MarkupSafe = "2.0.1"
 upydevice = "^0.3.6"
+attrs = "^22.1.0"
+typing-extensions = "^4.3.0"
+pysondb-v2 = "^2.1.0"
 
 [tool.poetry.group.dev.dependencies]
 autoflake = "^1.4"

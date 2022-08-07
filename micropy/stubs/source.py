@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 micropy.stubs.source
 ~~~~~~~~~~~~~~
@@ -9,6 +7,7 @@ and their location.
 """
 
 
+from __future__ import annotations
 import io
 import json
 import shutil
@@ -18,11 +17,93 @@ from contextlib import contextmanager
 from functools import partial
 from pathlib import Path, PurePosixPath
 from urllib import parse
+import attrs
+import abc
+from typing import ClassVar, TypedDict, Union, Generic, TypeVar, Any, Type
 
 import micropy.exceptions as exc
 import requests
 from micropy import utils
 from micropy.logger import Log
+import enum
+from pysondb import PysonDB
+
+
+class RepositoryType(str, enum.Enum):
+    MICROPY = "micropy-stubs"
+    PYSONDBV2 = "pysondbv2"
+
+
+@attrs.define
+class RepositoryInfo:
+    name: str
+    source: str
+    type: RepositoryType
+
+
+@attrs.define
+class StubPackage:
+    name: str
+    version: str
+
+
+class StubRepositoryOptions(TypedDict):
+    type: RepositoryType
+
+
+@attrs.define
+class StubRepository(abc.ABC):
+    registry: ClassVar[dict[RepositoryType, Type[StubRepository]]] = {}
+
+    info: RepositoryInfo
+    packages: list[StubPackage] = attrs.field(factory=list)
+
+    @classmethod
+    def __init_subclass__(cls, *, type: RepositoryType = RepositoryType.MICROPY, **kwargs) -> None:
+        _type = RepositoryType[type]
+        super().__init_subclass__(**kwargs)
+        StubRepository.registry[_type] = cls
+
+    @abc.abstractmethod
+    def parse_package(self, data: dict[str, Any]) -> StubPackage:
+        ...
+
+    @abc.abstractmethod
+    def find_packages(self, data: dict[str, Any]) -> list[dict[str, Any]]:
+        ...
+
+    def has_package(self, name: str) -> bool:
+        return True if next((i for i in self.packages if i.name == name), False) else False
+
+    def resolve_source(self) -> dict[str, Any]:
+        contents = requests.get(self.info.source).json()
+        return contents
+
+    def resolve_packages(self) -> StubRepository:
+        source = self.resolve_source()
+        packages = self.find_packages(source)
+        self.packages = [self.parse_package(p) for p in packages]
+        return self
+
+
+@attrs.define
+class PysonDBStubRepository(StubRepository, type=RepositoryType.PYSONDBV2):
+    def parse_package(self, data: dict[str, Any]) -> StubPackage:
+        return StubPackage(name=data["name"], version=data["pkg_version"])
+
+    def find_packages(self, data: dict[str, Any]) -> list[dict[str, Any]]:
+        db = PysonDB()
+        db.add_many(data)
+        return list(db.get_all().values())
+
+
+@attrs.define
+class MicropyStubRepository(StubRepository, type=RepositoryType.MICROPY):
+    def parse_package(self, data: dict[str, Any]) -> StubPackage:
+        return StubPackage(name=data["name"], version=data.get("sha256sum"))
+
+    def find_packages(self, data: dict[str, Any]) -> list[dict[str, Any]]:
+        return data["packages"]
 
 
 class StubRepo:

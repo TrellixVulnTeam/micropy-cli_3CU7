@@ -1,6 +1,12 @@
 [
     {
         "name": "Micropy Stubs",
-        "source": "https://raw.githubusercontent.com/BradenM/micropy-stubs/master/source.json"
+        "source": "https://raw.githubusercontent.com/BradenM/micropy-stubs/master/source.json",
+        "type": "micropy-stubs"
+    },
+    {
+        "name": "micropython-stubs",
+        "source": "https://raw.githubusercontent.com/Josverl/micropython-stubs/main/publish/package_data.jsondb",
+        "type": "pysondbv2"
     }
 ]
